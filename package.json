@@ -4,6 +4,10 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "url": "https://github.com/rippro/live-cp-cli",
+    "type": "git"
+  },
   "type": "module",
   "bin": {
     "judge": "./dist/cli.js",
