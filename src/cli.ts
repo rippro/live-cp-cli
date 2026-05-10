@@ -95,9 +95,7 @@ async function main() {
     });
 
     console.log(
-      `Result: AC. submissionId=${submission.submissionId} firstSolve=${String(
-        submission.solved,
-      )} solvedAt=${submission.solvedAt}`,
+      `Result: AC. firstSolve=${String(submission.solved)} solvedAt=${submission.solvedAt}`,
     );
   } finally {
     await runner.cleanup();

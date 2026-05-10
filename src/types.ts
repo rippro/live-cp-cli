@@ -41,7 +41,6 @@ export interface AcceptedCaseResult {
 }
 
 export interface SubmissionResponse {
-  submissionId: string;
   solved: boolean;
   solvedAt: string;
 }
