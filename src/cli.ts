@@ -110,14 +110,12 @@ async function initConfig(args: ParsedArgs): Promise<void> {
   }
 
   const interactive = process.stdin.isTTY && process.stdout.isTTY;
-  let apiBaseUrl = args.apiBaseUrl;
   let eventId = args.eventId;
   let token = args.token;
 
-  if (interactive && (!eventId || !token || !apiBaseUrl)) {
+  if (interactive && (!eventId || !token)) {
     const rl = createInterface({ input, output });
     try {
-      apiBaseUrl = apiBaseUrl ?? (await askWithDefault(rl, "API URL", "http://localhost:3000"));
       eventId = eventId ?? (await askRequired(rl, "Event ID"));
       token = token ?? (await askRequired(rl, "CLI token"));
     } finally {
@@ -125,7 +123,6 @@ async function initConfig(args: ParsedArgs): Promise<void> {
     }
   }
 
-  apiBaseUrl = apiBaseUrl ?? "http://localhost:3000";
   if (!eventId) {
     throw new Error("eventId is required. Use --event or run init in an interactive terminal.");
   }
@@ -133,22 +130,12 @@ async function initConfig(args: ParsedArgs): Promise<void> {
     throw new Error("token is required. Use --token or run init in an interactive terminal.");
   }
 
-  const config = {
-    apiBaseUrl: apiBaseUrl.replace(/\/+$/, ""),
-    eventId,
-    token,
-  };
+  const config: Record<string, string> = { eventId, token };
+  if (args.apiBaseUrl) {
+    config.apiBaseUrl = args.apiBaseUrl.replace(/\/+$/, "");
+  }
   writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
   console.log(`Wrote ${configPath}`);
-}
-
-async function askWithDefault(
-  rl: ReturnType<typeof createInterface>,
-  label: string,
-  defaultValue: string,
-): Promise<string> {
-  const answer = (await rl.question(`${label} (${defaultValue}): `)).trim();
-  return answer || defaultValue;
 }
 
 async function askRequired(
@@ -256,12 +243,13 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function printHelp(): void {
   console.log(`Usage:
-  rj init [--event <eventId>] [--token <token>] [--api <url>] [--config <path>] [--force]
-  rj submit <problemId> <sourcePath> [--event <eventId>] [--token <token>] [--api <url>]
+  rj init [--event <eventId>] [--token <token>] [--config <path>] [--force]
+  rj submit <problemId> <sourcePath> [--event <eventId>] [--token <token>]
 
 Config:
   Reads --config, ./.rippro-judge.json, ~/.rippro-judge/config.json, or RJ_* env vars.
-  Required values: eventId, token. Default apiBaseUrl: http://localhost:3000
+  Required: eventId, token. API URL is embedded in this package.
+  Override with --api <url> or RJ_API_BASE_URL for local development.
 `);
 }
 

@@ -4,6 +4,8 @@ import { join, resolve } from "node:path";
 
 import type { JudgeConfig } from "./types.js";
 
+const DEFAULT_API_BASE_URL = "https://rippro-judge.onrender.com";
+
 interface CliOptions {
   apiBaseUrl?: string;
   eventId?: string;
@@ -17,7 +19,7 @@ export function loadConfig(options: CliOptions): JudgeConfig {
     options.apiBaseUrl ??
     process.env.RJ_API_BASE_URL ??
     fileConfig.apiBaseUrl ??
-    "http://localhost:3000";
+    DEFAULT_API_BASE_URL;
   const eventId = options.eventId ?? process.env.RJ_EVENT_ID ?? fileConfig.eventId;
   const token = options.token ?? process.env.RJ_TOKEN ?? fileConfig.token;
 
