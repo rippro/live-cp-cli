@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { createInterface } from "node:readline/promises";
 import { resolve } from "node:path";
 import { stdin as input, stdout as output } from "node:process";
+import { createInterface } from "node:readline/promises";
 
 import { getProblemConfig, getTestcases, submitAccepted } from "./api.js";
 import { compareOutput } from "./compare.js";
@@ -10,7 +10,7 @@ import { loadConfig } from "./config.js";
 import { sha256Hex } from "./hash.js";
 import { detectLanguage, languageCommandName } from "./language.js";
 import { prepareRunner } from "./runner.js";
-import type { CaseResult, JudgeStatus, Testcase } from "./types.js";
+import type { AcceptedCaseResult, CompareMode, JudgeStatus, Testcase } from "./types.js";
 
 interface ParsedArgs {
   command: string | null;
@@ -64,25 +64,31 @@ async function main() {
   const runner = await prepareRunner(sourcePath, language);
 
   try {
-    const results: CaseResult[] = [];
+    const results: AcceptedCaseResult[] = [];
     let maxTimeMs = 0;
 
     for (const testcase of testcases.cases) {
       const result = await runner.run(testcase.input, problem.timeLimitMs);
-      const status = judgeCaseStatus(result.status, result.stdout, testcase.expectedOutput);
+      const status = judgeCaseStatus(
+        result.status,
+        result.stdout,
+        testcase.expectedOutput,
+        problem.compareMode,
+      );
       maxTimeMs = Math.max(maxTimeMs, result.timeMs);
-      results.push({ caseId: testcase.id, status, timeMs: result.timeMs });
       printCaseResult(testcase, status, result.timeMs);
 
       if (status !== "AC") {
         printFailure(testcase, result.stdout, result.stderr, status);
         console.log("Result: NOT AC. No submission was sent to the server.");
-        process.exit(1);
+        process.exitCode = 1;
+        return;
       }
+
+      results.push({ caseId: testcase.id, status, timeMs: result.timeMs });
     }
 
     const submission = await submitAccepted(config, args.problemId, {
-      language,
       sourceHash: sha256Hex(source),
       maxTimeMs,
       cases: results,
@@ -133,10 +139,7 @@ async function initConfig(args: ParsedArgs): Promise<void> {
   console.log(`Wrote ${configPath}`);
 }
 
-async function askRequired(
-  rl: ReturnType<typeof createInterface>,
-  label: string,
-): Promise<string> {
+async function askRequired(rl: ReturnType<typeof createInterface>, label: string): Promise<string> {
   while (true) {
     const answer = (await rl.question(`${label}: `)).trim();
     if (answer) {
@@ -150,11 +153,12 @@ function judgeCaseStatus(
   runStatus: JudgeStatus,
   stdout: string,
   expectedOutput: string,
+  compareMode: CompareMode,
 ): JudgeStatus {
   if (runStatus !== "AC") {
     return runStatus;
   }
-  return compareOutput(stdout, expectedOutput, "trimmed-exact") ? "AC" : "WA";
+  return compareOutput(stdout, expectedOutput, compareMode) ? "AC" : "WA";
 }
 
 function printCaseResult(testcase: Testcase, status: JudgeStatus, timeMs: number): void {

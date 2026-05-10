@@ -1,5 +1,5 @@
 import type {
-  CaseResult,
+  AcceptedCaseResult,
   JudgeConfig,
   ProblemConfig,
   SubmissionResponse,
@@ -44,10 +44,9 @@ export async function submitAccepted(
   config: JudgeConfig,
   problemId: string,
   input: {
-    language: string;
     sourceHash: string;
     maxTimeMs: number;
-    cases: CaseResult[];
+    cases: AcceptedCaseResult[];
   },
 ): Promise<SubmissionResponse> {
   return requestJson<SubmissionResponse>(

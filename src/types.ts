@@ -34,6 +34,12 @@ export interface CaseResult {
   timeMs: number;
 }
 
+export interface AcceptedCaseResult {
+  caseId: string;
+  status: "AC";
+  timeMs: number;
+}
+
 export interface SubmissionResponse {
   submissionId: string;
   solved: boolean;

@@ -6,6 +6,7 @@ export { detectLanguage } from "./language.js";
 export { prepareRunner } from "./runner.js";
 export type {
   CaseResult,
+  AcceptedCaseResult,
   CompareMode,
   JudgeConfig,
   JudgeStatus,
