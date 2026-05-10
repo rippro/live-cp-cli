@@ -1,5 +1,10 @@
-tailwind v3.
-if you apply some animation, use GSAP, not but framer-motion.
+live-cp-cli
 
-static site, and dont use dynamic param.
+live-cp-webのcliツール
+npx @rippro/judge@latest
+or
+npm install -g @rippro/judge@latest
+で使用
+
+
 
