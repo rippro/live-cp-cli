@@ -55,17 +55,11 @@ async function main() {
   if (!language) {
     throw new Error("unsupported source extension. Use .cpp, .cc, .cxx, or .py.");
   }
-  if (!problem.allowedLanguages.includes(language)) {
-    throw new Error(
-      `${language} is not allowed for ${problem.id}. allowed: ${problem.allowedLanguages.join(", ")}`,
-    );
-  }
 
   console.log(`Problem: ${problem.id} ${problem.title}`);
   console.log(`Language: ${language} (${languageCommandName(language)})`);
-  console.log(`Testcase version: ${problem.testcaseVersion}`);
 
-  const testcases = await getTestcases(config, args.problemId, problem.testcaseVersion);
+  const testcases = await getTestcases(config, args.problemId);
   const source = readFileSync(sourcePath);
   const runner = await prepareRunner(sourcePath, language);
 
@@ -90,7 +84,6 @@ async function main() {
     const submission = await submitAccepted(config, args.problemId, {
       language,
       sourceHash: sha256Hex(source),
-      testcaseVersion: problem.testcaseVersion,
       maxTimeMs,
       cases: results,
     });
@@ -165,30 +158,20 @@ function judgeCaseStatus(
 }
 
 function printCaseResult(testcase: Testcase, status: JudgeStatus, timeMs: number): void {
-  const label = `${testcase.orderIndex.toString().padStart(2, "0")} ${testcase.type}`;
-  console.log(`[${status}] ${label} ${timeMs}ms`);
+  const label = testcase.orderIndex.toString().padStart(2, "0");
+  console.log(`[${status}] #${label} ${timeMs}ms`);
 }
 
 function printFailure(
-  testcase: Testcase,
-  actualOutput: string,
+  _testcase: Testcase,
+  _actualOutput: string,
   stderr: string,
   status: JudgeStatus,
 ): void {
   if (status === "RE" || status === "CE" || status === "IE") {
     console.error(stderr.trim() || "(no stderr)");
   }
-  if (!testcase.showOnFailure) {
-    console.log("This testcase is hidden.");
-    return;
-  }
-
-  console.log("Input:");
-  console.log(testcase.input.trimEnd());
-  console.log("Expected:");
-  console.log(testcase.expectedOutput.trimEnd());
-  console.log("Actual:");
-  console.log(actualOutput.trimEnd());
+  console.log("This testcase is hidden.");
 }
 
 function parseArgs(argv: string[]): ParsedArgs {

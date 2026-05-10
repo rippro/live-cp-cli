@@ -31,13 +31,12 @@ export async function getProblemConfig(
 export async function getTestcases(
   config: JudgeConfig,
   problemId: string,
-  version: string,
 ): Promise<TestcasesResponse> {
   return requestJson<TestcasesResponse>(
     config,
     `/judge/events/${encodeURIComponent(config.eventId)}/problems/${encodeURIComponent(
       problemId,
-    )}/testcases?version=${encodeURIComponent(version)}`,
+    )}/testcases`,
   );
 }
 
@@ -47,7 +46,6 @@ export async function submitAccepted(
   input: {
     language: string;
     sourceHash: string;
-    testcaseVersion: string;
     maxTimeMs: number;
     cases: CaseResult[];
   },

@@ -13,26 +13,18 @@ export interface ProblemConfig {
   id: string;
   title: string;
   statement: string;
-  constraints: string;
-  inputFormat: string;
-  outputFormat: string;
-  allowedLanguages: string[];
   timeLimitMs: number;
   compareMode: CompareMode;
-  testcaseVersion: string;
 }
 
 export interface Testcase {
   id: string;
-  type: "sample" | "hidden";
   input: string;
   expectedOutput: string;
-  showOnFailure: boolean;
   orderIndex: number;
 }
 
 export interface TestcasesResponse {
-  version: string;
   cases: Testcase[];
 }
 
