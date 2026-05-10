@@ -177,58 +177,20 @@ testcases
 
 ## 4. 提出・AC記録
 
-### 4.1 submissions
-
-```
-submissions
-  id         : ULID, PK
-  userId     : TEXT, FK -> users.id
-  teamId     : ULID, FK -> teams.id
-  eventId    : TEXT
-  problemId  : TEXT
-  sourceHash : TEXT              ← SHA-256(source) の hex
-  status     : TEXT              ← "AC" のみ保存
-  maxTimeMs  : INTEGER
-  createdAt  : TIMESTAMPTZ
-
-  foreign key(eventId, problemId) -> problems(eventId, id)
-```
-
-v1では `status = "AC"` の提出のみサーバーに送信・保存する。WA・TLE・RE・CE・IEはCLI上でのみ表示する。
-
-`sourceHash` にはSHA-256ハッシュを保存する。ソースコード本文は保存しない。
-
-### 4.2 submissionCases
-
-```
-submissionCases
-  submissionId : ULID, FK -> submissions.id
-  caseId       : ULID, FK -> testcases.id
-  status       : TEXT              ← "AC"
-  timeMs       : INTEGER
-
-  primary key(submissionId, caseId)
-```
-
-AC時に各テストケースの実行結果を保存する。v1では全ケース `status = "AC"`。
-
-Firestoreのドキュメントキーは `{submissionId}_{caseId}`（`_` を `__` にエスケープして連結）。
-
-### 4.3 solves
+### 4.1 solves
 
 ```
 solves
-  teamId       : ULID, FK -> teams.id
-  eventId      : TEXT
-  problemId    : TEXT
-  submissionId : ULID, FK -> submissions.id   ← 最初にACした提出
-  solvedAt     : TIMESTAMPTZ
+  teamId    : ULID, FK -> teams.id
+  eventId   : TEXT
+  problemId : TEXT
+  solvedAt  : TIMESTAMPTZ
 
   primary key(teamId, eventId, problemId)
   foreign key(eventId, problemId) -> problems(eventId, id)
 ```
 
-「チームがその問題を解いた」という状態を表す。同じチームが同じ問題を複数回ACしても `solves` は1件だけ保持する。`submissionId` は最初にACした提出を指す（以降の提出では更新しない）。
+「チームがその問題を解いた」という状態を表す。同じチームが同じ問題を複数回ACしても `solves` は1件だけ保持する（2回目以降は更新しない）。
 
 Firestoreのドキュメントキーは `{teamId}_{eventId}_{problemId}`（`_` を `__` にエスケープして連結）。
 
@@ -310,13 +272,12 @@ Authorization: Bearer <token>
 レスポンス:
 ```json
 {
-  "submissionId": "...",
   "solved": true,
   "solvedAt": "2026-01-01T00:00:00.000Z"
 }
 ```
 
-`solved` は今回の提出でそのチームが初めてACした場合 `true`、既にsolves済みなら `false`。
+`solved` は今回の提出でそのチームが初めてACした場合 `true`、既にsolves済みなら `false`。提出内容はサーバーに保存しない。
 
 ---
 
@@ -419,8 +380,6 @@ ULID実装: `crockfordBase32(Date.now(), 10) + crockfordBase32FromBytes(randomBy
 | `problems` | `{eventId}_{problemId}`（`_`→`__`エスケープ） |
 | `testcases` | ULID |
 | `cliTokens` | ULID |
-| `submissions` | ULID |
-| `submissionCases` | `{submissionId}_{caseId}`（`_`→`__`エスケープ） |
 | `solves` | `{teamId}_{eventId}_{problemId}`（`_`→`__`エスケープ） |
 | `_unique` | `cliTokens:tokenHash:<hash>` |
 
@@ -459,20 +418,8 @@ cliTokens
   foreign key(teamId) -> teams(id)
   cliToken.userId must be role="solver" in teamMembers
 
-submissions
-  primary key(id)
-  foreign key(userId) -> users(id)
-  foreign key(teamId) -> teams(id)
-  foreign key(eventId, problemId) -> problems(eventId, id)
-
-submissionCases
-  primary key(submissionId, caseId)
-  foreign key(submissionId) -> submissions(id)
-  foreign key(caseId) -> testcases(id)
-
 solves
   primary key(teamId, eventId, problemId)
   foreign key(teamId) -> teams(id)
   foreign key(eventId, problemId) -> problems(eventId, id)
-  foreign key(submissionId) -> submissions(id)
 ```
