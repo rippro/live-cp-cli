@@ -4,7 +4,7 @@
 
 競プロ新歓イベント向けの簡易ジャッジ補助システム。
 
-参加者はWebで問題を確認し、ローカルでC++またはPythonのコードを書く。提出は `npx @rippro/judge@latest` で行う。
+参加者はWebで問題を確認し、ローカルでC++またはPythonのコードを書く。CLIは `npm install -g @rippro/judge@latest` で事前にインストールする。イベント設定は提出作業ディレクトリで `rj init` を実行して `.rippro-judge.json` を作成する。提出は `rj submit <problemId> <sourcePath>` で行う。
 
 CLIはサーバーからテストケースを取得し、参加者PC上で提出コードを実行する。全テストケースに通った場合のみ、CLIがサーバーへAC結果を送信する。
 

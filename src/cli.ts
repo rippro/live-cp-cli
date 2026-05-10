@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { createInterface } from "node:readline/promises";
 import { resolve } from "node:path";
+import { stdin as input, stdout as output } from "node:process";
 
 import { getProblemConfig, getTestcases, submitAccepted } from "./api.js";
 import { compareOutput } from "./compare.js";
@@ -18,6 +20,7 @@ interface ParsedArgs {
   eventId?: string;
   token?: string;
   configPath?: string;
+  force: boolean;
 }
 
 async function main() {
@@ -26,6 +29,10 @@ async function main() {
   if (args.command === "help" || args.command === null) {
     printHelp();
     process.exit(args.command === null ? 1 : 0);
+  }
+  if (args.command === "init") {
+    await initConfig(args);
+    return;
   }
   if (args.command !== "submit") {
     throw new Error(`unknown command: ${args.command}`);
@@ -96,6 +103,67 @@ async function main() {
   }
 }
 
+async function initConfig(args: ParsedArgs): Promise<void> {
+  const configPath = resolve(args.configPath ?? ".rippro-judge.json");
+  if (existsSync(configPath) && !args.force) {
+    throw new Error(`config file already exists: ${configPath}. Use --force to overwrite.`);
+  }
+
+  const interactive = process.stdin.isTTY && process.stdout.isTTY;
+  let apiBaseUrl = args.apiBaseUrl;
+  let eventId = args.eventId;
+  let token = args.token;
+
+  if (interactive && (!eventId || !token || !apiBaseUrl)) {
+    const rl = createInterface({ input, output });
+    try {
+      apiBaseUrl = apiBaseUrl ?? (await askWithDefault(rl, "API URL", "http://localhost:3000"));
+      eventId = eventId ?? (await askRequired(rl, "Event ID"));
+      token = token ?? (await askRequired(rl, "CLI token"));
+    } finally {
+      rl.close();
+    }
+  }
+
+  apiBaseUrl = apiBaseUrl ?? "http://localhost:3000";
+  if (!eventId) {
+    throw new Error("eventId is required. Use --event or run init in an interactive terminal.");
+  }
+  if (!token) {
+    throw new Error("token is required. Use --token or run init in an interactive terminal.");
+  }
+
+  const config = {
+    apiBaseUrl: apiBaseUrl.replace(/\/+$/, ""),
+    eventId,
+    token,
+  };
+  writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  console.log(`Wrote ${configPath}`);
+}
+
+async function askWithDefault(
+  rl: ReturnType<typeof createInterface>,
+  label: string,
+  defaultValue: string,
+): Promise<string> {
+  const answer = (await rl.question(`${label} (${defaultValue}): `)).trim();
+  return answer || defaultValue;
+}
+
+async function askRequired(
+  rl: ReturnType<typeof createInterface>,
+  label: string,
+): Promise<string> {
+  while (true) {
+    const answer = (await rl.question(`${label}: `)).trim();
+    if (answer) {
+      return answer;
+    }
+    console.log(`${label} is required.`);
+  }
+}
+
 function judgeCaseStatus(
   runStatus: JudgeStatus,
   stdout: string,
@@ -139,6 +207,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     command: argv[0] ?? null,
     problemId: null,
     sourcePath: null,
+    force: false,
   };
   const positional: string[] = [];
 
@@ -149,6 +218,10 @@ function parseArgs(argv: string[]): ParsedArgs {
     }
     if (!arg.startsWith("--")) {
       positional.push(arg);
+      continue;
+    }
+    if (arg === "--force") {
+      parsed.force = true;
       continue;
     }
 
@@ -183,6 +256,7 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function printHelp(): void {
   console.log(`Usage:
+  rj init [--event <eventId>] [--token <token>] [--api <url>] [--config <path>] [--force]
   rj submit <problemId> <sourcePath> [--event <eventId>] [--token <token>] [--api <url>]
 
 Config:
