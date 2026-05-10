@@ -1,6 +1,9 @@
 {
   "name": "@rippro/judge",
   "version": "0.1.0",
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "judge": "./dist/cli.js",
