@@ -19,7 +19,6 @@ interface ParsedArgs {
   apiBaseUrl?: string;
   eventId?: string;
   token?: string;
-  configPath?: string;
   force: boolean;
 }
 
@@ -40,13 +39,16 @@ async function main() {
   if (!args.problemId || !args.sourcePath) {
     throw new Error("submit requires <problemId> and <sourcePath>");
   }
+  if (args.eventId || args.token || args.apiBaseUrl) {
+    throw new Error("submit reads only ./.rippro-judge.json. Remove --event, --token, or --api.");
+  }
 
   const sourcePath = resolve(args.sourcePath);
   if (!existsSync(sourcePath)) {
     throw new Error(`source file not found: ${sourcePath}`);
   }
 
-  const config = loadConfig(args);
+  const config = loadConfig();
   const problem = await getProblemConfig(config, args.problemId);
   const language = detectLanguage(sourcePath);
 
@@ -104,7 +106,7 @@ async function main() {
 }
 
 async function initConfig(args: ParsedArgs): Promise<void> {
-  const configPath = resolve(args.configPath ?? ".rippro-judge.json");
+  const configPath = resolve(".rippro-judge.json");
   if (existsSync(configPath) && !args.force) {
     throw new Error(`config file already exists: ${configPath}. Use --force to overwrite.`);
   }
@@ -228,9 +230,6 @@ function parseArgs(argv: string[]): ParsedArgs {
       case "--token":
         parsed.token = value;
         break;
-      case "--config":
-        parsed.configPath = value;
-        break;
       default:
         throw new Error(`unknown option: ${arg}`);
     }
@@ -243,13 +242,13 @@ function parseArgs(argv: string[]): ParsedArgs {
 
 function printHelp(): void {
   console.log(`Usage:
-  rj init [--event <eventId>] [--token <token>] [--config <path>] [--force]
-  rj submit <problemId> <sourcePath> [--event <eventId>] [--token <token>]
+  rj init [--api <url>] [--event <eventId>] [--token <token>] [--force]
+  rj submit <problemId> <sourcePath>
 
 Config:
-  Reads --config, ./.rippro-judge.json, ~/.rippro-judge/config.json, or RJ_* env vars.
+  Reads ./.rippro-judge.json.
   Required: eventId, token. API URL is embedded in this package.
-  Override with --api <url> or RJ_API_BASE_URL for local development.
+  Use rj init --api <url> to write a local API URL for development.
 `);
 }
 

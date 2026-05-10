@@ -1,33 +1,22 @@
 import { existsSync, readFileSync } from "node:fs";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { resolve } from "node:path";
 
 import type { JudgeConfig } from "./types.js";
 
 const DEFAULT_API_BASE_URL = "https://rippro-judge.onrender.com";
+const CONFIG_PATH = ".rippro-judge.json";
 
-interface CliOptions {
-  apiBaseUrl?: string;
-  eventId?: string;
-  token?: string;
-  configPath?: string;
-}
-
-export function loadConfig(options: CliOptions): JudgeConfig {
-  const fileConfig = readConfigFile(options.configPath);
-  const apiBaseUrl =
-    options.apiBaseUrl ??
-    process.env.RJ_API_BASE_URL ??
-    fileConfig.apiBaseUrl ??
-    DEFAULT_API_BASE_URL;
-  const eventId = options.eventId ?? process.env.RJ_EVENT_ID ?? fileConfig.eventId;
-  const token = options.token ?? process.env.RJ_TOKEN ?? fileConfig.token;
+export function loadConfig(): JudgeConfig {
+  const fileConfig = readConfigFile();
+  const apiBaseUrl = fileConfig.apiBaseUrl ?? DEFAULT_API_BASE_URL;
+  const eventId = fileConfig.eventId;
+  const token = fileConfig.token;
 
   if (!eventId) {
-    throw new Error("eventId is required. Use --event, RJ_EVENT_ID, or a config file.");
+    throw new Error("eventId is required in .rippro-judge.json.");
   }
   if (!token) {
-    throw new Error("token is required. Use --token, RJ_TOKEN, or a config file.");
+    throw new Error("token is required in .rippro-judge.json.");
   }
 
   return {
@@ -37,13 +26,9 @@ export function loadConfig(options: CliOptions): JudgeConfig {
   };
 }
 
-function readConfigFile(configPath?: string): Partial<JudgeConfig> {
-  const candidates = configPath
-    ? [resolve(configPath)]
-    : [resolve(".rippro-judge.json"), join(homedir(), ".rippro-judge", "config.json")];
-
-  const path = candidates.find((candidate) => existsSync(candidate));
-  if (!path) {
+function readConfigFile(): Partial<JudgeConfig> {
+  const path = resolve(CONFIG_PATH);
+  if (!existsSync(path)) {
     return {};
   }
 
