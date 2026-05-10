@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 
 import type { JudgeConfig } from "./types.js";
 
-const DEFAULT_API_BASE_URL = "https://rippro-judge.onrender.com";
+const DEFAULT_API_BASE_URL = "https://live-cp-web.vercel.app";
 const CONFIG_PATH = ".rippro-judge.json";
 
 export function loadConfig(): JudgeConfig {
