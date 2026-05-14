@@ -8,7 +8,7 @@ import { getProblemConfig, getTestcases, submitAccepted } from "./api.js";
 import { compareOutput } from "./compare.js";
 import { loadConfig } from "./config.js";
 import { sha256Hex } from "./hash.js";
-import { detectLanguage, languageCommandName } from "./language.js";
+import { detectLanguage, languageCommandName, supportedExtensions } from "./language.js";
 import { prepareRunner } from "./runner.js";
 import type { AcceptedCaseResult, CompareMode, JudgeStatus, Testcase } from "./types.js";
 
@@ -53,7 +53,7 @@ async function main() {
   const language = detectLanguage(sourcePath);
 
   if (!language) {
-    throw new Error("unsupported source extension. Use .cpp, .cc, .cxx, or .py.");
+    throw new Error(`unsupported source extension. Use ${supportedExtensions().join(", ")}.`);
   }
 
   console.log(`Problem: ${problem.id} ${problem.title}`);

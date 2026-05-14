@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 import type { Language, RunResult } from "./types.js";
 
@@ -14,30 +14,132 @@ export async function prepareRunner(
   sourcePath: string,
   language: Language,
 ): Promise<PreparedRunner> {
-  switch (language) {
-    case "cpp":
-      return prepareCppRunner(sourcePath);
-    case "python":
-      return preparePythonRunner(sourcePath);
-  }
+  return LANGUAGE_PREPARERS[language](sourcePath);
 }
 
-async function prepareCppRunner(sourcePath: string): Promise<PreparedRunner> {
-  const dir = await mkdtemp(join(tmpdir(), "rippro-judge-"));
-  const binaryPath = join(dir, "main");
-  const compile = await runProcess("g++", [
-    "-std=c++17",
-    "-O2",
-    "-pipe",
-    sourcePath,
-    "-o",
-    binaryPath,
-  ]);
+const LANGUAGE_PREPARERS: Record<Language, (sourcePath: string) => Promise<PreparedRunner>> = {
+  c: prepareCRunner,
+  cpp: prepareCppRunner,
+  go: prepareGoRunner,
+  haskell: prepareHaskellRunner,
+  java: prepareJavaRunner,
+  javascript: prepareJavaScriptRunner,
+  kotlin: prepareKotlinRunner,
+  perl: preparePerlRunner,
+  php: preparePhpRunner,
+  python: preparePythonRunner,
+  ruby: prepareRubyRunner,
+  rust: prepareRustRunner,
+};
 
-  if (compile.status !== "AC") {
+async function prepareCppRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCompiledRunner(
+    "g++",
+    (artifactPath) => ["-std=c++17", "-O2", "-pipe", sourcePath, "-o", artifactPath],
+    (artifactPath) => artifactPath,
+    (artifactPath) => [artifactPath],
+  );
+}
+
+async function prepareCRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCompiledRunner(
+    "gcc",
+    (artifactPath) => ["-std=c17", "-O2", "-pipe", sourcePath, "-o", artifactPath],
+    (artifactPath) => artifactPath,
+    (artifactPath) => [artifactPath],
+  );
+}
+
+async function prepareGoRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCommandRunner("go", ["run", sourcePath]);
+}
+
+async function prepareHaskellRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCompiledRunner(
+    "ghc",
+    (artifactPath) => ["-O2", sourcePath, "-o", artifactPath],
+    (artifactPath) => artifactPath,
+    (artifactPath) => [artifactPath],
+  );
+}
+
+async function prepareJavaRunner(sourcePath: string): Promise<PreparedRunner> {
+  const className = basename(sourcePath, ".java");
+  return prepareCompiledRunner(
+    "javac",
+    (artifactPath) => ["-d", artifactPath, sourcePath],
+    (_artifactPath) => "java",
+    (artifactPath) => ["-cp", artifactPath, className],
+    "",
+  );
+}
+
+async function prepareJavaScriptRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCommandRunner("node", [sourcePath]);
+}
+
+async function prepareKotlinRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCompiledRunner(
+    "kotlinc",
+    (artifactPath) => [sourcePath, "-include-runtime", "-d", artifactPath],
+    (_artifactPath) => "java",
+    (artifactPath) => ["-jar", artifactPath],
+    "main.jar",
+  );
+}
+
+async function preparePerlRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCommandRunner("perl", [sourcePath]);
+}
+
+async function preparePhpRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCommandRunner("php", [sourcePath]);
+}
+
+async function preparePythonRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCommandRunner("python3", [sourcePath]);
+}
+
+async function prepareRubyRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCommandRunner("ruby", [sourcePath]);
+}
+
+async function prepareRustRunner(sourcePath: string): Promise<PreparedRunner> {
+  return prepareCompiledRunner(
+    "rustc",
+    (artifactPath) => ["-O", sourcePath, "-o", artifactPath],
+    (artifactPath) => artifactPath,
+    (artifactPath) => [artifactPath],
+  );
+}
+
+function prepareCommandRunner(command: string, args: string[]): PreparedRunner {
+  return {
+    run(input, timeLimitMs) {
+      return runProcess(command, args, input, timeLimitMs);
+    },
+    async cleanup() {
+      return Promise.resolve();
+    },
+  };
+}
+
+async function prepareCompiledRunner(
+  compileCommand: string,
+  compileArgs: (artifactPath: string) => string[],
+  runCommand: (artifactPath: string) => string,
+  runArgs: (artifactPath: string) => string[],
+  artifactName = "main",
+): Promise<PreparedRunner> {
+  const dir = await mkdtemp(join(tmpdir(), "rippro-judge-"));
+  const artifactPath = join(dir, artifactName);
+  const compile = await runProcess(compileCommand, compileArgs(artifactPath), "", 30_000);
+  const compileStatus = compile.status === "RE" ? "CE" : compile.status;
+
+  if (compileStatus !== "AC") {
     return {
       async run() {
-        return { ...compile, status: "CE" };
+        return { ...compile, status: compileStatus };
       },
       async cleanup() {
         await rm(dir, { recursive: true, force: true });
@@ -47,21 +149,10 @@ async function prepareCppRunner(sourcePath: string): Promise<PreparedRunner> {
 
   return {
     run(input, timeLimitMs) {
-      return runProcess(binaryPath, [], input, timeLimitMs);
+      return runProcess(runCommand(artifactPath), runArgs(artifactPath), input, timeLimitMs);
     },
     async cleanup() {
       await rm(dir, { recursive: true, force: true });
-    },
-  };
-}
-
-async function preparePythonRunner(sourcePath: string): Promise<PreparedRunner> {
-  return {
-    run(input, timeLimitMs) {
-      return runProcess("python3", [sourcePath], input, timeLimitMs);
-    },
-    async cleanup() {
-      return Promise.resolve();
     },
   };
 }

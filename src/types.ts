@@ -1,4 +1,16 @@
-export type Language = "cpp" | "python";
+export type Language =
+  | "c"
+  | "cpp"
+  | "go"
+  | "haskell"
+  | "java"
+  | "javascript"
+  | "kotlin"
+  | "perl"
+  | "php"
+  | "python"
+  | "ruby"
+  | "rust";
 export type JudgeStatus = "AC" | "WA" | "TLE" | "RE" | "CE" | "IE";
 export type CompareMode = "trimmed-exact";
 

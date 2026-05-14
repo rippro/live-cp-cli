@@ -38,3 +38,11 @@ rj submit <problemId> <sourcePath>
 ```
 
 設定は提出作業ディレクトリの `./.rippro-judge.json` だけを読む。
+
+## 対応言語
+
+拡張子ベースで次の言語を判定する。
+
+```text
+.c, .cc, .cpp, .cxx, .go, .hs, .java, .js, .cjs, .mjs, .kt, .pl, .php, .py, .rb, .rs
+```
