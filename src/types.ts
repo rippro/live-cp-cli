@@ -14,10 +14,13 @@ export type Language =
 export type JudgeStatus = "AC" | "WA" | "TLE" | "RE" | "CE" | "IE";
 export type CompareMode = "trimmed-exact";
 
+export type LanguageCommands = Partial<Record<Language, string>>;
+
 export interface JudgeConfig {
   apiBaseUrl: string;
   eventId: string;
   token: string;
+  languageCommands?: LanguageCommands;
 }
 
 export interface ProblemConfig {

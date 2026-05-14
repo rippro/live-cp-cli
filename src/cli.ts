@@ -61,7 +61,7 @@ async function main() {
 
   const testcases = await getTestcases(config, args.problemId);
   const source = readFileSync(sourcePath);
-  const runner = await prepareRunner(sourcePath, language);
+  const runner = await prepareRunner(sourcePath, language, config.languageCommands);
 
   try {
     const results: AcceptedCaseResult[] = [];

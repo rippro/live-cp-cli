@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
-import type { Language, RunResult } from "./types.js";
+import type { Language, LanguageCommands, RunResult } from "./types.js";
 
 export interface PreparedRunner {
   run(input: string, timeLimitMs: number): Promise<RunResult>;
@@ -13,11 +13,16 @@ export interface PreparedRunner {
 export async function prepareRunner(
   sourcePath: string,
   language: Language,
+  languageCommands?: LanguageCommands,
 ): Promise<PreparedRunner> {
-  return LANGUAGE_PREPARERS[language](sourcePath);
+  const cmd = languageCommands?.[language];
+  return LANGUAGE_PREPARERS[language](sourcePath, cmd);
 }
 
-const LANGUAGE_PREPARERS: Record<Language, (sourcePath: string) => Promise<PreparedRunner>> = {
+const LANGUAGE_PREPARERS: Record<
+  Language,
+  (sourcePath: string, cmd: string | undefined) => Promise<PreparedRunner>
+> = {
   c: prepareCRunner,
   cpp: prepareCppRunner,
   go: prepareGoRunner,
@@ -32,8 +37,8 @@ const LANGUAGE_PREPARERS: Record<Language, (sourcePath: string) => Promise<Prepa
   rust: prepareRustRunner,
 };
 
-async function prepareCppRunner(sourcePath: string): Promise<PreparedRunner> {
-  const compiler = resolveCompiler(["g++", "clang++"]);
+async function prepareCppRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
+  const compiler = cmd ?? resolveCompiler(["g++", "clang++"]);
   return prepareCompiledRunner(
     compiler,
     (artifactPath) => ["-std=c++17", "-O2", "-pipe", sourcePath, "-o", artifactPath],
@@ -42,8 +47,8 @@ async function prepareCppRunner(sourcePath: string): Promise<PreparedRunner> {
   );
 }
 
-async function prepareCRunner(sourcePath: string): Promise<PreparedRunner> {
-  const compiler = resolveCompiler(["gcc", "clang"]);
+async function prepareCRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
+  const compiler = cmd ?? resolveCompiler(["gcc", "clang"]);
   return prepareCompiledRunner(
     compiler,
     (artifactPath) => ["-std=c17", "-O2", "-pipe", sourcePath, "-o", artifactPath],
@@ -52,23 +57,23 @@ async function prepareCRunner(sourcePath: string): Promise<PreparedRunner> {
   );
 }
 
-async function prepareGoRunner(sourcePath: string): Promise<PreparedRunner> {
-  return prepareCommandRunner("go", ["run", sourcePath]);
+async function prepareGoRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
+  return prepareCommandRunner(cmd ?? "go", ["run", sourcePath]);
 }
 
-async function prepareHaskellRunner(sourcePath: string): Promise<PreparedRunner> {
+async function prepareHaskellRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
   return prepareCompiledRunner(
-    "ghc",
+    cmd ?? "ghc",
     (artifactPath) => ["-O2", sourcePath, "-o", artifactPath],
     (artifactPath) => artifactPath,
     (artifactPath) => [artifactPath],
   );
 }
 
-async function prepareJavaRunner(sourcePath: string): Promise<PreparedRunner> {
+async function prepareJavaRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
   const className = basename(sourcePath, ".java");
   return prepareCompiledRunner(
-    "javac",
+    cmd ?? "javac",
     (artifactPath) => ["-d", artifactPath, sourcePath],
     (_artifactPath) => "java",
     (artifactPath) => ["-cp", artifactPath, className],
@@ -76,13 +81,13 @@ async function prepareJavaRunner(sourcePath: string): Promise<PreparedRunner> {
   );
 }
 
-async function prepareJavaScriptRunner(sourcePath: string): Promise<PreparedRunner> {
-  return prepareCommandRunner("node", [sourcePath]);
+async function prepareJavaScriptRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
+  return prepareCommandRunner(cmd ?? "node", [sourcePath]);
 }
 
-async function prepareKotlinRunner(sourcePath: string): Promise<PreparedRunner> {
+async function prepareKotlinRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
   return prepareCompiledRunner(
-    "kotlinc",
+    cmd ?? "kotlinc",
     (artifactPath) => [sourcePath, "-include-runtime", "-d", artifactPath],
     (_artifactPath) => "java",
     (artifactPath) => ["-jar", artifactPath],
@@ -90,25 +95,25 @@ async function prepareKotlinRunner(sourcePath: string): Promise<PreparedRunner> 
   );
 }
 
-async function preparePerlRunner(sourcePath: string): Promise<PreparedRunner> {
-  return prepareCommandRunner("perl", [sourcePath]);
+async function preparePerlRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
+  return prepareCommandRunner(cmd ?? "perl", [sourcePath]);
 }
 
-async function preparePhpRunner(sourcePath: string): Promise<PreparedRunner> {
-  return prepareCommandRunner("php", [sourcePath]);
+async function preparePhpRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
+  return prepareCommandRunner(cmd ?? "php", [sourcePath]);
 }
 
-async function preparePythonRunner(sourcePath: string): Promise<PreparedRunner> {
-  return prepareCommandRunner("python3", [sourcePath]);
+async function preparePythonRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
+  return prepareCommandRunner(cmd ?? "python3", [sourcePath]);
 }
 
-async function prepareRubyRunner(sourcePath: string): Promise<PreparedRunner> {
-  return prepareCommandRunner("ruby", [sourcePath]);
+async function prepareRubyRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
+  return prepareCommandRunner(cmd ?? "ruby", [sourcePath]);
 }
 
-async function prepareRustRunner(sourcePath: string): Promise<PreparedRunner> {
+async function prepareRustRunner(sourcePath: string, cmd?: string): Promise<PreparedRunner> {
   return prepareCompiledRunner(
-    "rustc",
+    cmd ?? "rustc",
     (artifactPath) => ["-O", sourcePath, "-o", artifactPath],
     (artifactPath) => artifactPath,
     (artifactPath) => [artifactPath],

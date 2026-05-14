@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import type { JudgeConfig } from "./types.js";
+import type { JudgeConfig, Language, LanguageCommands } from "./types.js";
 
 const DEFAULT_API_BASE_URL = "https://live-cp-web.vercel.app";
 const CONFIG_PATH = ".rippro-judge.json";
@@ -52,6 +52,11 @@ function readConfigFile(): Partial<JudgeConfig> {
     config.token = token;
   }
 
+  const languageCommands = readOptionalLanguageCommands(raw);
+  if (languageCommands !== undefined) {
+    config.languageCommands = languageCommands;
+  }
+
   return config;
 }
 
@@ -64,6 +69,34 @@ function readOptionalString(record: Record<string, unknown>, key: string): strin
     throw new Error(`${key} in config file must be a non-empty string`);
   }
   return value;
+}
+
+const VALID_LANGUAGES = new Set<string>([
+  "c", "cpp", "go", "haskell", "java", "javascript",
+  "kotlin", "perl", "php", "python", "ruby", "rust",
+]);
+
+function readOptionalLanguageCommands(
+  record: Record<string, unknown>,
+): LanguageCommands | undefined {
+  const value = record["languageCommands"];
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    throw new Error("languageCommands in config file must be a JSON object");
+  }
+  const result: LanguageCommands = {};
+  for (const [lang, cmd] of Object.entries(value)) {
+    if (!VALID_LANGUAGES.has(lang)) {
+      throw new Error(`languageCommands: unknown language "${lang}"`);
+    }
+    if (typeof cmd !== "string" || cmd.length === 0) {
+      throw new Error(`languageCommands.${lang} must be a non-empty string`);
+    }
+    result[lang as Language] = cmd;
+  }
+  return result;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

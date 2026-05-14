@@ -27,7 +27,8 @@ rj init --event rippro-2026-spring --token rj_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```json
 {
   "eventId": "rippro-2026-spring",
-  "token": "rj_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  "token": "rj_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+  "languageCommands": { "python": "python", "cpp": "g++-12" }
 }
 ```
 
