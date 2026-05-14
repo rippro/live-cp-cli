@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
@@ -33,8 +33,9 @@ const LANGUAGE_PREPARERS: Record<Language, (sourcePath: string) => Promise<Prepa
 };
 
 async function prepareCppRunner(sourcePath: string): Promise<PreparedRunner> {
+  const compiler = resolveCompiler(["g++", "clang++"]);
   return prepareCompiledRunner(
-    "g++",
+    compiler,
     (artifactPath) => ["-std=c++17", "-O2", "-pipe", sourcePath, "-o", artifactPath],
     (artifactPath) => artifactPath,
     (artifactPath) => [artifactPath],
@@ -42,8 +43,9 @@ async function prepareCppRunner(sourcePath: string): Promise<PreparedRunner> {
 }
 
 async function prepareCRunner(sourcePath: string): Promise<PreparedRunner> {
+  const compiler = resolveCompiler(["gcc", "clang"]);
   return prepareCompiledRunner(
-    "gcc",
+    compiler,
     (artifactPath) => ["-std=c17", "-O2", "-pipe", sourcePath, "-o", artifactPath],
     (artifactPath) => artifactPath,
     (artifactPath) => [artifactPath],
@@ -111,6 +113,14 @@ async function prepareRustRunner(sourcePath: string): Promise<PreparedRunner> {
     (artifactPath) => artifactPath,
     (artifactPath) => [artifactPath],
   );
+}
+
+function resolveCompiler(candidates: [string, ...string[]]): string {
+  for (const candidate of candidates) {
+    const result = spawnSync("which", [candidate], { encoding: "utf8" });
+    if (result.status === 0 && result.stdout.trim()) return candidate;
+  }
+  return candidates[0];
 }
 
 function prepareCommandRunner(command: string, args: string[]): PreparedRunner {

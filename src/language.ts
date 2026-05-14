@@ -8,8 +8,8 @@ interface LanguageSpec {
 }
 
 const LANGUAGE_SPECS: Record<Language, LanguageSpec> = {
-  c: { extensions: [".c"], commandName: "gcc" },
-  cpp: { extensions: [".cc", ".cpp", ".cxx"], commandName: "g++" },
+  c: { extensions: [".c"], commandName: "gcc/clang" },
+  cpp: { extensions: [".cc", ".cpp", ".cxx"], commandName: "g++/clang++" },
   go: { extensions: [".go"], commandName: "go run" },
   haskell: { extensions: [".hs"], commandName: "ghc" },
   java: { extensions: [".java"], commandName: "javac/java" },
@@ -24,9 +24,7 @@ const LANGUAGE_SPECS: Record<Language, LanguageSpec> = {
 
 const EXTENSION_TO_LANGUAGE = new Map<string, Language>();
 
-for (const [language, spec] of Object.entries(LANGUAGE_SPECS) as Array<
-  [Language, LanguageSpec]
->) {
+for (const [language, spec] of Object.entries(LANGUAGE_SPECS) as Array<[Language, LanguageSpec]>) {
   for (const extension of spec.extensions) {
     EXTENSION_TO_LANGUAGE.set(extension, language);
   }
